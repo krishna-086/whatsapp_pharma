@@ -53,6 +53,28 @@ class BlobStorage:
         return blob_client.url
 
     # ------------------------------------------------------------------
+    #  Voice note upload
+    # ------------------------------------------------------------------
+
+    def upload_voice_note(self, audio_bytes: bytes, sender: str, extension: str = "ogg") -> str:
+        """
+        Upload a WhatsApp voice note to blob storage.
+
+        Path convention: {sender_sanitised}/voice/{uuid}.{ext}
+        Returns the blob URL.
+        """
+        sanitised_sender = sender.replace(":", "")
+        blob_name = f"{sanitised_sender}/voice/{uuid.uuid4()}.{extension}"
+        logger.info("Uploading voice note as blob: %s", blob_name)
+
+        client = self._get_client()
+        blob_client = client.get_blob_client(
+            container=self.container_name, blob=blob_name
+        )
+        blob_client.upload_blob(audio_bytes, overwrite=True)
+        return blob_client.url
+
+    # ------------------------------------------------------------------
     #  Generic blob operations
     # ------------------------------------------------------------------
 

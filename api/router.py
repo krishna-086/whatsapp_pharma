@@ -119,7 +119,7 @@ def _handle_audio(sender: str, media_url: str, content_type: str, text: str) -> 
     """Download audio → transcribe → classify intent → reply."""
     logger.info("Router._handle_audio for %s", sender)
 
-    transcript, intent_result = _voice.process_voice_message(media_url, content_type)
+    transcript, intent_result = _voice.process_voice_message(media_url, content_type, sender)
 
     if not transcript:
         _reply(sender, intent_result.get("reply", "Could not transcribe audio."))

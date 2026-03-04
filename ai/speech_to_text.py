@@ -1,21 +1,43 @@
 """
-Speech to Text – Azure Cognitive Services Speech SDK integration.
+Speech to Text – Azure Speech REST API integration.
 
-Ported from legacy_reference/function_app.py transcribe_audio().
-Uses PushAudioInputStream + continuous recognition so it handles
-voice messages of any length and format (OGG_OPUS, MP3, MP4, WAV).
+Uses the Speech-to-Text REST API for short audio instead of the SDK.
+The REST endpoint handles OGG/OPUS/MP3 decoding **server-side**, so
+there is no need for GStreamer on the host machine.
+
+Endpoint:
+  POST https://{region}.stt.speech.microsoft.com/speech/recognition/
+       conversation/cognitiveservices/v1?language={lang}
+Headers:
+  Ocp-Apim-Subscription-Key : {key}
+  Content-Type              : audio/ogg; codecs=opus  (or other MIME)
+Body:
+  Raw audio bytes
+
+Limitation: the REST “short audio” endpoint supports up to ~60 s.
+WhatsApp voice notes are almost always < 60 s.
 """
 import logging
 import os
-import threading
 
-import azure.cognitiveservices.speech as speechsdk
+import requests
 
 logger = logging.getLogger(__name__)
 
+# Mapping from Twilio MIME types → Content-Type header the REST API expects
+_MIME_MAP = {
+    "audio/ogg": "audio/ogg; codecs=opus",
+    "audio/ogg; codecs=opus": "audio/ogg; codecs=opus",
+    "audio/mpeg": "audio/mpeg",
+    "audio/mp3": "audio/mpeg",
+    "audio/mp4": "audio/mp4",
+    "audio/wav": "audio/wav",
+    "audio/x-wav": "audio/wav",
+}
+
 
 class SpeechToText:
-    """Wrapper for Azure Speech-to-Text operations."""
+    """Azure Speech-to-Text via REST API (no SDK / no GStreamer)."""
 
     def __init__(self):
         self.speech_key = os.environ.get("AZURE_SPEECH_KEY", "")
@@ -32,98 +54,58 @@ class SpeechToText:
         language: str = "en-US",
     ) -> str:
         """
-        Transcribe raw audio bytes to text.
+        Transcribe raw audio bytes to text via the Speech REST API.
 
         Parameters
         ----------
         audio_bytes : bytes
-            The raw audio payload (OGG, MP3, MP4, WAV, etc.).
+            Raw audio payload (OGG, MP3, WAV, etc.).
         content_type : str
-            MIME type of the audio (e.g. ``audio/ogg``, ``audio/mpeg``).
+            MIME type of the audio.
         language : str
             BCP-47 language code, default ``en-US``.
 
         Returns
         -------
-        str
-            Transcribed text (may be empty on failure).
+        str   Transcribed text (empty string on failure).
         """
-        logger.info("SpeechToText.transcribe  content_type=%s  bytes=%d",
-                     content_type, len(audio_bytes))
-
-        speech_config = speechsdk.SpeechConfig(
-            subscription=self.speech_key,
-            region=self.speech_region,
-        )
-        speech_config.speech_recognition_language = language
-
-        # Map MIME type → SDK compressed-stream container format
-        container_format = self._mime_to_container_format(content_type)
-
-        if container_format is not None:
-            compressed_fmt = speechsdk.audio.AudioStreamFormat(
-                compressed_stream_format=container_format
-            )
-            push_stream = speechsdk.audio.PushAudioInputStream(
-                stream_format=compressed_fmt
-            )
-        else:
-            # Plain WAV – use default PCM stream
-            push_stream = speechsdk.audio.PushAudioInputStream()
-
-        push_stream.write(audio_bytes)
-        push_stream.close()
-
-        audio_config = speechsdk.audio.AudioConfig(stream=push_stream)
-        recognizer = speechsdk.SpeechRecognizer(
-            speech_config=speech_config,
-            audio_config=audio_config,
+        logger.info(
+            "SpeechToText.transcribe  content_type=%s  bytes=%d  lang=%s",
+            content_type, len(audio_bytes), language,
         )
 
-        # Continuous recognition collects all utterances
-        done = threading.Event()
-        all_results: list[str] = []
+        url = (
+            f"https://{self.speech_region}.stt.speech.microsoft.com/"
+            f"speech/recognition/conversation/cognitiveservices/v1"
+            f"?language={language}&format=detailed"
+        )
 
-        def recognized_cb(evt):
-            if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
-                all_results.append(evt.result.text)
+        ct_header = _MIME_MAP.get(content_type.lower(), content_type)
 
-        def session_stopped_cb(_evt):
-            done.set()
+        headers = {
+            "Ocp-Apim-Subscription-Key": self.speech_key,
+            "Content-Type": ct_header,
+            "Accept": "application/json",
+        }
 
-        def canceled_cb(evt):
-            details = evt.result.cancellation_details
-            logger.warning("Speech recognition canceled: %s / %s",
-                           details.reason, details.error_details)
-            done.set()
+        try:
+            resp = requests.post(url, headers=headers, data=audio_bytes, timeout=60)
+            resp.raise_for_status()
+            result = resp.json()
+        except requests.RequestException as exc:
+            logger.error("Speech REST API error: %s", exc)
+            return ""
 
-        recognizer.recognized.connect(recognized_cb)
-        recognizer.session_stopped.connect(session_stopped_cb)
-        recognizer.canceled.connect(canceled_cb)
+        status = result.get("RecognitionStatus", "")
+        if status == "Success":
+            # "detailed" format returns NBest[]; pick the top result
+            nbest = result.get("NBest", [])
+            if nbest:
+                transcript = nbest[0].get("Display", "")
+            else:
+                transcript = result.get("DisplayText", "")
+            logger.info("Transcription (%d chars): %s", len(transcript), transcript[:120])
+            return transcript
 
-        recognizer.start_continuous_recognition()
-        done.wait(timeout=120)
-        recognizer.stop_continuous_recognition()
-
-        transcript = " ".join(all_results) if all_results else ""
-        logger.info("Transcription result (%d chars): %s",
-                     len(transcript), transcript[:120])
-        return transcript
-
-    # ------------------------------------------------------------------
-    #  Helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _mime_to_container_format(content_type: str):
-        """Map a MIME type to an ``AudioStreamContainerFormat`` enum, or None for WAV."""
-        ct = (content_type or "").lower()
-        if "ogg" in ct:
-            return speechsdk.AudioStreamContainerFormat.OGG_OPUS
-        if "mp3" in ct or "mpeg" in ct:
-            return speechsdk.AudioStreamContainerFormat.MP3
-        if "mp4" in ct or "m4a" in ct:
-            return speechsdk.AudioStreamContainerFormat.MP4
-        if "wav" in ct:
-            return None  # WAV is native PCM, no container needed
-        return speechsdk.AudioStreamContainerFormat.ANY
+        logger.warning("Recognition status: %s  body=%s", status, result)
+        return ""
