@@ -4,8 +4,9 @@ API Router – Central message dispatcher for the WhatsApp webhook.
 Receives a parsed Twilio message dict and routes it:
   • Image  (non-audio media)  → InvoiceService.process_invoice_image()
   • Audio  (voice note)       → VoiceService  → STT → LLM intent
+  • Text   (YES / NO)         → InventoryService.handle_confirmation()
   • Text   (invoice command)  → InvoiceService.handle_command()
-  • Text   (free text)        → NLPService  → LLM intent / chat
+  • Text   (free text)        → NLPService  → LLM intent → inventory or chat
 """
 import logging
 
@@ -13,6 +14,7 @@ from messaging.twilio_service import TwilioService
 from services.invoice_service import InvoiceService
 from services.voice_service import VoiceService
 from services.nlp_service import NLPService
+from services.inventory_service import InventoryService
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +23,15 @@ _twilio: TwilioService | None = None
 _invoice: InvoiceService | None = None
 _voice: VoiceService | None = None
 _nlp: NLPService | None = None
+_inventory: InventoryService | None = None
+
+# Intents that the InventoryService can handle
+_INVENTORY_INTENTS = {"sell_item", "add_item", "delete_item", "update_item", "query_stock"}
 
 
 def _init_services():
     """Initialise service singletons once (cold-start)."""
-    global _twilio, _invoice, _voice, _nlp
+    global _twilio, _invoice, _voice, _nlp, _inventory
     if _twilio is None:
         _twilio = TwilioService()
     if _invoice is None:
@@ -34,6 +40,8 @@ def _init_services():
         _voice = VoiceService()
     if _nlp is None:
         _nlp = NLPService()
+    if _inventory is None:
+        _inventory = InventoryService()
 
 
 def _reply(sender: str, text: str):
@@ -82,7 +90,16 @@ def route_message(message: dict) -> str:
 
     # ── 2. Text-only messages ────────────────────────────────────────
 
-    # 2a. Try invoice-session commands first (SHOW / OK / EDIT / CONFIRM)
+    # 2a. YES / NO → check for pending inventory confirmation first
+    if text:
+        upper = text.strip().upper()
+        if upper in ("YES", "Y", "NO", "N", "CANCEL"):
+            conf_reply = _inventory.handle_confirmation(sender, text)
+            if conf_reply is not None:
+                _reply(sender, conf_reply)
+                return "OK"
+
+    # 2b. Try invoice-session commands (SHOW / OK / EDIT / CONFIRM)
     if text:
         upper = text.strip().upper()
         if upper in ("SHOW", "OK", "CONFIRM") or upper.startswith("EDIT"):
@@ -91,7 +108,7 @@ def route_message(message: dict) -> str:
                 _reply(sender, reply)
                 return "OK"
 
-    # 2b. General text → NLP / LLM
+    # 2c. General text → NLP / LLM → route to inventory or chat
     if text:
         return _handle_text(sender, text)
 
@@ -125,10 +142,8 @@ def _handle_audio(sender: str, media_url: str, content_type: str, text: str) -> 
         _reply(sender, intent_result.get("reply", "Could not transcribe audio."))
         return "OK"
 
-    # Echo the transcription
-    _reply(sender, f'🎙 Voice transcription:\n"{transcript}"')
-
     intent = intent_result.get("intent", "general_chat")
+    entities = intent_result.get("entities", {})
 
     # If the voice message is actually an invoice command, handle it
     upper = transcript.strip().upper()
@@ -138,25 +153,40 @@ def _handle_audio(sender: str, media_url: str, content_type: str, text: str) -> 
             _reply(sender, cmd_reply)
             return "OK"
 
+    # YES / NO confirmation via voice
+    if upper in ("YES", "Y", "NO", "N", "CANCEL"):
+        conf_reply = _inventory.handle_confirmation(sender, transcript)
+        if conf_reply is not None:
+            _reply(sender, conf_reply)
+            return "OK"
+
+    # If the voice is an inventory intent
+    if intent in _INVENTORY_INTENTS:
+        inv_reply = _inventory.handle_intent(sender, intent, entities)
+        if inv_reply:
+            _reply(sender, f'🎙 "{transcript}"\n\n{inv_reply}')
+            return "OK"
+
     # If intent is "send_invoice", prompt for an image
     if intent == "send_invoice":
-        _reply(sender, "📷 Please send the invoice image and I'll extract the details.")
+        _reply(sender, f'🎙 "{transcript}"\n\n📷 Please send the invoice image and I\'ll extract the details.')
         return "OK"
 
     # Otherwise relay the LLM reply
     llm_reply = intent_result.get("reply", "")
     if llm_reply:
-        _reply(sender, llm_reply)
+        _reply(sender, f'🎙 "{transcript}"\n\n{llm_reply}')
 
     return "OK"
 
 
 def _handle_text(sender: str, text: str) -> str:
-    """Classify text via LLM → reply."""
+    """Classify text via LLM → route to inventory service or chat."""
     logger.info("Router._handle_text for %s: %s", sender, text[:60])
 
     result = _nlp.parse_message(text)
     intent = result.get("intent", "general_chat")
+    entities = result.get("entities", {})
 
     # Intent-specific shortcuts
     if intent == "send_invoice":
@@ -164,16 +194,21 @@ def _handle_text(sender: str, text: str) -> str:
         return "OK"
 
     if intent == "edit_invoice":
-        # The user might be describing an edit in natural language
         cmd_reply = _invoice.handle_command(sender, text)
         if cmd_reply:
             _reply(sender, cmd_reply)
             return "OK"
-        # If no active session, let LLM reply handle it
         _reply(sender, result.get("reply", "No active invoice session. Please send an image first."))
         return "OK"
 
-    # Default: relay the LLM reply
+    # ── Inventory intents → InventoryService ────────────────────────
+    if intent in _INVENTORY_INTENTS:
+        inv_reply = _inventory.handle_intent(sender, intent, entities)
+        if inv_reply:
+            _reply(sender, inv_reply)
+            return "OK"
+
+    # Default: relay the LLM reply (general_chat)
     llm_reply = result.get("reply", "I'm here to help! Send an invoice image or ask me anything.")
     _reply(sender, llm_reply)
     return "OK"

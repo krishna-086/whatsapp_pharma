@@ -31,9 +31,18 @@ def whatsapp_webhook(req: func.HttpRequest) -> func.HttpResponse:
         # 2. Route to the correct service
         route_message(message)
 
-        # 3. Twilio expects a 200 OK (we already replied via REST API)
-        return func.HttpResponse("OK", status_code=200)
+        # 3. Twilio expects a 200 OK – return empty TwiML so Twilio
+        #    does NOT echo any extra text as a message.
+        return func.HttpResponse(
+            "<Response></Response>",
+            status_code=200,
+            mimetype="text/xml",
+        )
 
     except Exception as exc:
         logging.exception("Webhook error")
-        return func.HttpResponse(f"Error: {exc}", status_code=500)
+        return func.HttpResponse(
+            "<Response></Response>",
+            status_code=200,
+            mimetype="text/xml",
+        )

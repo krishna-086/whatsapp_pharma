@@ -129,18 +129,26 @@ class InvoiceService:
         msg.append("Invoice received ✅")
         msg.append(f"Vendor: {invoice.get('vendor', {}).get('name', {}).get('value', 'N/A')}")
         msg.append(f"Invoice No: {invoice.get('invoice_number', {}).get('value', 'N/A')}")
-        msg.append(f"Total: {invoice.get('net_amount', {}).get('value', 0.0)}")
+        total_val = invoice.get('net_amount', {}).get('value', 0.0)
+        msg.append(f"Total: ₹{round(total_val, 2)}")
         msg.append("")
         msg.append("Items:")
 
         for i, item in enumerate(invoice.get("items", []), 1):
             desc  = item.get("description", {}).get("value", "")
             qty   = item.get("quantity", {}).get("value", "")
+            price = item.get("unit_price", {}).get("value", "")
+            amt   = item.get("amount", {}).get("value", "")
             exp   = item.get("expiry_date", {}).get("value", "")
             batch = item.get("batch_no", {}).get("value", "")
+
+            price_str = f"₹{round(float(price), 2)}" if price else "N/A"
+            amt_str   = f"₹{round(float(amt), 2)}"   if amt   else "N/A"
+
             msg.append(
-                f"{i}) {desc} | Qty: {qty} | "
-                f"Batch: {batch or '(missing) ⚠'} | "
+                f"{i}) {desc}\n"
+                f"   Qty: {qty} × {price_str} = {amt_str}\n"
+                f"   Batch: {batch or '(missing) ⚠'} | "
                 f"Exp: {exp or '(missing) ⚠'}"
             )
 
@@ -252,7 +260,13 @@ class InvoiceService:
 
         if upper == "CONFIRM":
             self.finalize(sender, session)
-            return "Invoice confirmed ✅ Saved successfully."
+            # Seed inventory from the confirmed invoice
+            try:
+                from services.inventory_service import InventoryService
+                InventoryService.seed_from_invoice(session["invoice"])
+            except Exception:
+                logger.exception("Inventory seeding failed (non-fatal)")
+            return "Invoice confirmed ✅ Saved successfully.\n📦 Items added to inventory."
 
         if upper.startswith("EDIT"):
             msg = self.apply_edit(session, text)

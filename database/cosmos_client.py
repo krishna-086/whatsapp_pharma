@@ -1,40 +1,33 @@
 """
-Cosmos Client - Azure Cosmos DB client initialization and configuration.
+Cosmos Client – Shared Azure Cosmos DB client initialisation.
+
+Uses the same env vars as the rest of the project:
+  COSMOS_ENDPOINT, COSMOS_KEY, COSMOS_DB
 """
 import logging
 import os
-from azure.cosmos import CosmosClient, PartitionKey
+
+from azure.cosmos import CosmosClient
 
 logger = logging.getLogger(__name__)
 
+# Module-level singleton
+_client: CosmosClient | None = None
+_database = None
 
-class CosmosDBClient:
-    """Singleton-style wrapper for Azure Cosmos DB client."""
 
-    _instance = None
+def _init():
+    global _client, _database
+    if _client is None:
+        endpoint = os.environ.get("COSMOS_ENDPOINT", "")
+        key = os.environ.get("COSMOS_KEY", "")
+        db_name = os.environ.get("COSMOS_DB", "pharmagent")
+        _client = CosmosClient(endpoint, key)
+        _database = _client.get_database_client(db_name)
+        logger.info("CosmosDBClient initialised (db=%s)", db_name)
 
-    def __init__(self):
-        self.endpoint = os.environ.get("COSMOS_DB_ENDPOINT", "")
-        self.key = os.environ.get("COSMOS_DB_KEY", "")
-        self.database_name = os.environ.get("COSMOS_DB_DATABASE", "pharmacy")
-        self._client = None
-        self._database = None
 
-    def get_client(self) -> CosmosClient:
-        """Get or create the Cosmos DB client."""
-        if self._client is None:
-            logger.info("Initializing Cosmos DB client.")
-            self._client = CosmosClient(self.endpoint, credential=self.key)
-        return self._client
-
-    def get_database(self):
-        """Get or create the database reference."""
-        if self._database is None:
-            client = self.get_client()
-            self._database = client.get_database_client(self.database_name)
-        return self._database
-
-    def get_container(self, container_name: str):
-        """Get a container reference by name."""
-        database = self.get_database()
-        return database.get_container_client(container_name)
+def get_container(name: str):
+    """Return a container client by name (lazily initialises the DB)."""
+    _init()
+    return _database.get_container_client(name)
