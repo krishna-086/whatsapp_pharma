@@ -1,0 +1,61 @@
+"""
+Voice Service – Download audio → transcribe → classify intent via LLM.
+
+Pipeline:
+  1. Download audio bytes from Twilio media URL
+  2. Transcribe with Azure Speech-to-Text
+  3. Send transcript to LLM for intent classification
+  4. Return (transcript, intent_result)
+"""
+import logging
+
+from ai.speech_to_text import SpeechToText
+from ai.llm_parser import LLMParser
+from messaging.twilio_service import TwilioService
+
+logger = logging.getLogger(__name__)
+
+
+class VoiceService:
+    """Orchestrator for voice-message handling."""
+
+    def __init__(self):
+        self.stt = SpeechToText()
+        self.llm = LLMParser()
+        self.twilio = TwilioService()
+
+    def process_voice_message(
+        self,
+        media_url: str,
+        content_type: str = "audio/ogg",
+    ) -> tuple[str, dict]:
+        """
+        Full voice pipeline.
+
+        Returns
+        -------
+        (transcript, intent_result)
+            transcript : str – the raw speech-to-text output
+            intent_result : dict – LLM intent classification (intent, confidence, entities, reply)
+        """
+        logger.info("VoiceService: downloading audio from %s", media_url)
+        audio_bytes = self.twilio.download_media(media_url)
+
+        logger.info("VoiceService: transcribing %d bytes (%s)", len(audio_bytes), content_type)
+        transcript = self.stt.transcribe(audio_bytes, content_type)
+
+        if not transcript:
+            logger.warning("VoiceService: empty transcription")
+            return "", {
+                "intent": "unknown",
+                "confidence": 0.0,
+                "entities": {},
+                "reply": (
+                    "Sorry, I couldn't understand the voice message. "
+                    "Please try again or type your message."
+                ),
+            }
+
+        logger.info("VoiceService: classifying transcript via LLM")
+        intent_result = self.llm.parse_intent(transcript)
+        return transcript, intent_result
