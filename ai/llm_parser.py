@@ -42,6 +42,10 @@ Extract entities whenever possible:
 IMPORTANT – Multi-item requests:
 When the user mentions MULTIPLE items in a single message (e.g. "sold 2 belladonna and 1 aspirin"),
 return an "items" array inside "entities":
+
+Respond ONLY with a valid JSON object. Examples:
+
+Multi-item:
 {
   "intent": "sell_item",
   "confidence": 0.95,
@@ -54,7 +58,7 @@ return an "items" array inside "entities":
   "reply": "..."
 }
 
-For SINGLE-item requests, use the normal flat format:
+For SINGLE-item requests:
 {
   "intent": "<one of the intents above>",
   "confidence": <0.0-1.0>,
