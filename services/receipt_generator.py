@@ -51,7 +51,7 @@ _TEMPLATE = """\
 <p class="subtitle">ID: {txn_id}<br>{timestamp}</p>
 <table>
   <thead>
-    <tr><th>Item</th><th class="right">Qty</th><th class="right">Unit ₹</th><th class="right">Amount ₹</th></tr>
+    <tr><th>Item</th><th class="right">Qty</th><th class="right">MRP ₹</th><th class="right">Amount ₹</th></tr>
   </thead>
   <tbody>
     {rows}
@@ -82,7 +82,7 @@ def generate_receipt_html(
             f"<tr>"
             f"<td>{it.get('name', '')}</td>"
             f"<td class='right'>{it.get('quantity', 0)}</td>"
-            f"<td class='right'>{it.get('unit_price', 0)}</td>"
+            f"<td class='right'>{it.get('mrp', 0)}</td>"
             f"<td class='right'>{it.get('amount', 0)}</td>"
             f"</tr>"
         )

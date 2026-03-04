@@ -152,12 +152,12 @@ class InventoryService:
             return item  # it's a message ("did you mean?" or "not found")
         if item is None:
             return ""  # pending confirmation saved
-        unit_price = item.get("unit_price", 0)
-        amount = qty * unit_price
+        mrp = item.get("mrp", 0)
+        amount = qty * mrp
 
         summary = (
             f"Sell *{qty}x {item['name']}*\n"
-            f"Unit price: ₹{unit_price}\n"
+            f"MRP: ₹{mrp}\n"
             f"Total: ₹{amount}"
         )
 
@@ -167,7 +167,7 @@ class InventoryService:
             "item_id": item["id"],
             "item_name": item["name"],
             "quantity": qty,
-            "unit_price": unit_price,
+            "mrp": mrp,
             "amount": amount,
             "summary": summary,
         })
@@ -178,7 +178,7 @@ class InventoryService:
         """Execute the sale: deduct stock + record transaction + generate receipt."""
         item_id = action["item_id"]
         qty = action["quantity"]
-        unit_price = action["unit_price"]
+        mrp = action["mrp"]
         amount = action["amount"]
         item_name = action["item_name"]
 
@@ -199,7 +199,7 @@ class InventoryService:
             "items": [{
                 "name": item_name,
                 "quantity": qty,
-                "unit_price": unit_price,
+                "mrp": mrp,
                 "amount": amount,
             }],
             "total": amount,
@@ -214,7 +214,7 @@ class InventoryService:
                 items=[{
                     "name": item_name,
                     "quantity": qty,
-                    "unit_price": unit_price,
+                    "mrp": mrp,
                     "amount": amount,
                 }],
                 total=amount,
@@ -230,7 +230,7 @@ class InventoryService:
             "",
             f"*{item_name}*",
             f"Qty sold: {qty}",
-            f"Unit price: ₹{unit_price}",
+            f"MRP: ₹{mrp}",
             f"Total: ₹{amount}",
             f"Remaining stock: {remaining}",
         ]
@@ -246,8 +246,7 @@ class InventoryService:
     def _initiate_add(self, sender: str, entities: dict) -> str:
         name = entities.get("name") or entities.get("medicine_name") or ""
         qty = int(entities.get("quantity") or entities.get("qty") or 0)
-        price = float(entities.get("unit_price") or entities.get("price") or 0)
-        mrp = float(entities.get("mrp") or 0)
+        mrp = float(entities.get("mrp") or entities.get("price") or entities.get("unit_price") or 0)
         batch = entities.get("batch_no") or entities.get("batch") or ""
         expiry = entities.get("expiry_date") or entities.get("expiry") or ""
 
@@ -257,8 +256,8 @@ class InventoryService:
             return "Please specify a quantity. Example: *add 50 belladonna at ₹120*"
 
         summary = f"Add *{qty}x {name}*"
-        if price:
-            summary += f" @ ₹{price}"
+        if mrp:
+            summary += f" @ MRP ₹{mrp}"
         if batch:
             summary += f" (Batch: {batch})"
         if expiry:
@@ -268,7 +267,6 @@ class InventoryService:
             "type": "add",
             "item_name": name,
             "quantity": qty,
-            "unit_price": price,
             "mrp": mrp,
             "batch_no": batch,
             "expiry_date": expiry,
@@ -281,7 +279,6 @@ class InventoryService:
         """Execute the add: upsert or create inventory item."""
         name = action["item_name"]
         qty = action["quantity"]
-        price = action.get("unit_price", 0)
         mrp = action.get("mrp", 0)
         batch = action.get("batch_no", "")
         expiry = action.get("expiry_date", "")
@@ -291,8 +288,6 @@ class InventoryService:
         if matches:
             doc = matches[0]
             doc["quantity"] = doc.get("quantity", 0) + qty
-            if price:
-                doc["unit_price"] = price
             if mrp:
                 doc["mrp"] = mrp
             if batch:
@@ -311,7 +306,6 @@ class InventoryService:
             "id": item_id,
             "name": name,
             "quantity": qty,
-            "unit_price": price,
             "mrp": mrp,
             "batch_no": batch,
             "expiry_date": expiry,
@@ -319,7 +313,7 @@ class InventoryService:
         })
         return (
             f"✅ New item added!\n"
-            f"*{name}* — {qty} units @ ₹{price}"
+            f"*{name}* — {qty} units @ MRP ₹{mrp}"
         )
 
     # ------------------------------------------------------------------
@@ -367,8 +361,7 @@ class InventoryService:
         # Gather fields to update
         updates = {}
         for key, aliases in [
-            ("unit_price", ["unit_price", "price"]),
-            ("mrp", ["mrp"]),
+            ("mrp", ["mrp", "price", "unit_price"]),
             ("batch_no", ["batch_no", "batch"]),
             ("expiry_date", ["expiry_date", "expiry"]),
             ("quantity", ["quantity", "qty"]),
@@ -410,7 +403,7 @@ class InventoryService:
             return f"❌ *{item_name}* not found in inventory."
 
         for key, val in updates.items():
-            if key in ("unit_price", "mrp", "quantity"):
+            if key in ("mrp", "quantity"):
                 doc[key] = float(val)
             else:
                 doc[key] = val
@@ -435,13 +428,12 @@ class InventoryService:
             lines.append("─" * 28)
             for idx, it in enumerate(items, 1):
                 qty = it.get('quantity', 0)
-                price = it.get('unit_price', 0)
                 mrp = it.get('mrp', 0)
                 batch = it.get('batch_no', '')
                 expiry = it.get('expiry_date', '')
-                total_val = round(qty * price, 2)
+                total_val = round(qty * mrp, 2)
                 lines.append(f"*{idx}. {it['name']}*")
-                lines.append(f"   Qty: {qty}  |  Price: ₹{price}  |  MRP: ₹{mrp}")
+                lines.append(f"   Qty: {qty}  |  MRP: \u20b9{mrp}")
                 if batch or expiry:
                     lines.append(f"   Batch: {batch or 'N/A'}  |  Exp: {expiry or 'N/A'}")
                 lines.append(f"   Stock value: ₹{total_val}")
@@ -454,14 +446,12 @@ class InventoryService:
             return f"No item matching *{name}* found in inventory."
 
         qty = item.get('quantity', 0)
-        price = item.get('unit_price', 0)
         mrp = item.get('mrp', 0)
-        total_val = round(qty * price, 2)
+        total_val = round(qty * mrp, 2)
         return (
             f"📦 *{item['name']}*\n"
             f"────────────────────\n"
             f"  Stock:      {qty} units\n"
-            f"  Unit Price: ₹{price}\n"
             f"  MRP:        ₹{mrp}\n"
             f"  Batch:      {item.get('batch_no') or 'N/A'}\n"
             f"  Expiry:     {item.get('expiry_date') or 'N/A'}\n"
@@ -576,6 +566,9 @@ class InventoryService:
             qty = int(item.get("quantity", {}).get("value") or 0)
             price = float(item.get("unit_price", {}).get("value") or 0)
             mrp = float(item.get("mrp", {}).get("value") or 0)
+            # If OCR didn't extract MRP, default to unit_price
+            if not mrp and price:
+                mrp = price
             batch = item.get("batch_no", {}).get("value", "")
             expiry = item.get("expiry_date", {}).get("value", "")
 
@@ -586,8 +579,6 @@ class InventoryService:
             if matches:
                 doc = matches[0]
                 doc["quantity"] = doc.get("quantity", 0) + qty
-                if price:
-                    doc["unit_price"] = price
                 if mrp:
                     doc["mrp"] = mrp
                 if batch:
@@ -601,7 +592,6 @@ class InventoryService:
                     "id": item_id,
                     "name": name,
                     "quantity": qty,
-                    "unit_price": price,
                     "mrp": mrp,
                     "batch_no": batch,
                     "expiry_date": expiry,

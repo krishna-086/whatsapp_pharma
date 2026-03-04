@@ -35,8 +35,7 @@ When the user sends a message, classify their INTENT as exactly one of:
 Extract entities whenever possible:
   • name / medicine_name – the item name (e.g. "Belladonna 30C")
   • quantity / qty – numeric quantity
-  • unit_price / price – price per unit
-  • mrp – maximum retail price
+  • mrp / price – maximum retail price (MRP). Always map any price to "mrp".
   • batch_no – batch/lot number
   • expiry_date – expiry date
 
@@ -47,7 +46,6 @@ Respond ONLY with a JSON object:
   "entities": {
     "name": "<item name if mentioned>",
     "quantity": <number or null>,
-    "unit_price": <number or null>,
     "mrp": <number or null>,
     "batch_no": "<string or null>",
     "expiry_date": "<string or null>"

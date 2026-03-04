@@ -137,17 +137,17 @@ class InvoiceService:
         for i, item in enumerate(invoice.get("items", []), 1):
             desc  = item.get("description", {}).get("value", "")
             qty   = item.get("quantity", {}).get("value", "")
-            price = item.get("unit_price", {}).get("value", "")
+            mrp   = item.get("unit_price", {}).get("value", "")
             amt   = item.get("amount", {}).get("value", "")
             exp   = item.get("expiry_date", {}).get("value", "")
             batch = item.get("batch_no", {}).get("value", "")
 
-            price_str = f"₹{round(float(price), 2)}" if price else "N/A"
-            amt_str   = f"₹{round(float(amt), 2)}"   if amt   else "N/A"
+            mrp_str = f"₹{round(float(mrp), 2)}" if mrp else "N/A"
+            amt_str = f"₹{round(float(amt), 2)}"  if amt else "N/A"
 
             msg.append(
                 f"{i}) {desc}\n"
-                f"   Qty: {qty} × {price_str} = {amt_str}\n"
+                f"   Qty: {qty} × MRP {mrp_str} = {amt_str}\n"
                 f"   Batch: {batch or '(missing) ⚠'} | "
                 f"Exp: {exp or '(missing) ⚠'}"
             )
@@ -224,10 +224,8 @@ class InvoiceService:
             item["expiry_date"] = {"value": self._normalize_expiry(value) or value, "confidence": 1.0, "source": "manual"}
         elif field == "batch":
             item["batch_no"] = {"value": value, "confidence": 1.0, "source": "manual"}
-        elif field in ("price", "unit_price"):
+        elif field in ("price", "unit_price", "mrp"):
             item["unit_price"] = {"value": float(value), "confidence": 1.0, "source": "manual"}
-        elif field == "mrp":
-            item["mrp"] = {"value": float(value), "confidence": 1.0, "source": "manual"}
         else:
             return f"Unknown field '{field}'. Use: qty, expiry, batch, price, mrp."
 
