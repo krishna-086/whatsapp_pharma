@@ -43,7 +43,7 @@ class LLMParser:
     def __init__(self):
         self.endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT", "")
         self.api_key = os.environ.get("AZURE_OPENAI_KEY", "")
-        self.deployment = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-4o")
+        self.deployment = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-4.1")
         self.api_version = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
         self._client = None
 
