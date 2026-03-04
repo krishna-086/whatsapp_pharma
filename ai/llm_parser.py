@@ -39,7 +39,22 @@ Extract entities whenever possible:
   • batch_no – batch/lot number
   • expiry_date – expiry date
 
-Respond ONLY with a JSON object:
+IMPORTANT – Multi-item requests:
+When the user mentions MULTIPLE items in a single message (e.g. "sold 2 belladonna and 1 aspirin"),
+return an "items" array inside "entities":
+{
+  "intent": "sell_item",
+  "confidence": 0.95,
+  "entities": {
+    "items": [
+      {"name": "Belladonna 30", "quantity": 2},
+      {"name": "Aspirin", "quantity": 1}
+    ]
+  },
+  "reply": "..."
+}
+
+For SINGLE-item requests, use the normal flat format:
 {
   "intent": "<one of the intents above>",
   "confidence": <0.0-1.0>,

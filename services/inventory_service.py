@@ -140,8 +140,29 @@ class InventoryService:
     # ------------------------------------------------------------------
 
     def _initiate_sale(self, sender: str, entities: dict) -> str:
+        # ----- Multi-item sale -----
+        # 1. LLM returned an "items" array
+        items_list = entities.get("items")
+        if items_list and isinstance(items_list, list) and len(items_list) > 1:
+            return self._initiate_multi_sale(sender, items_list)
+
+        # 2. LLM returned quantity as a dict (fallback format)
+        qty_raw = entities.get("quantity") or entities.get("qty") or 1
+        if isinstance(qty_raw, dict):
+            name_raw = entities.get("name") or entities.get("medicine_name") or ""
+            names = [n.strip() for n in name_raw.split(",") if n.strip()]
+            if len(names) > 1:
+                items_list = []
+                for n in names:
+                    q = qty_raw.get(n, 1)
+                    items_list.append({"name": n, "quantity": int(q)})
+                return self._initiate_multi_sale(sender, items_list)
+            # Single item with dict quantity – take the first value
+            qty_raw = list(qty_raw.values())[0] if qty_raw else 1
+
+        # ----- Single-item sale -----
         name = entities.get("name") or entities.get("medicine_name") or ""
-        qty = int(entities.get("quantity") or entities.get("qty") or 1)
+        qty = int(qty_raw)
 
         if not name:
             return "Please specify which item you sold. Example: *sold 2 of belladonna*"
@@ -169,6 +190,62 @@ class InventoryService:
             "quantity": qty,
             "mrp": mrp,
             "amount": amount,
+            "summary": summary,
+        })
+
+        return f"🛒 Confirm sale:\n\n{summary}\n\nReply *YES* to confirm or *NO* to cancel."
+
+    # ------------------------------------------------------------------
+    #  Multi-item sale
+    # ------------------------------------------------------------------
+
+    def _initiate_multi_sale(self, sender: str, items_list: list[dict]) -> str:
+        """Build a combined sale confirmation for multiple items."""
+        resolved_items = []
+        errors = []
+
+        for entry in items_list:
+            name = entry.get("name", "")
+            qty = int(entry.get("quantity", 1))
+            if not name:
+                continue
+
+            item = self._resolve_item_direct(name)
+            if item is None:
+                errors.append(f"• *{name}* — not found in inventory")
+                continue
+
+            mrp = item.get("mrp", 0)
+            amount = round(qty * mrp, 2)
+            resolved_items.append({
+                "item_id": item["id"],
+                "item_name": item["name"],
+                "quantity": qty,
+                "mrp": mrp,
+                "amount": amount,
+            })
+
+        if errors and not resolved_items:
+            return "❌ None of the items were found:\n" + "\n".join(errors)
+
+        # Build summary
+        grand_total = round(sum(it["amount"] for it in resolved_items), 2)
+        summary_lines = []
+        for it in resolved_items:
+            summary_lines.append(
+                f"• *{it['quantity']}x {it['item_name']}* — "
+                f"MRP ₹{it['mrp']} = ₹{it['amount']}"
+            )
+        summary_lines.append(f"\n*Grand total: ₹{grand_total}*")
+        if errors:
+            summary_lines.append("\n⚠ Skipped (not found):")
+            summary_lines.extend(errors)
+        summary = "\n".join(summary_lines)
+
+        _save_pending(sender, {
+            "type": "multi_sell",
+            "items": resolved_items,
+            "grand_total": grand_total,
             "summary": summary,
         })
 
@@ -238,6 +315,71 @@ class InventoryService:
             lines.append(f"\n🧾 Receipt: {receipt_url}")
 
         return "\n".join(lines)
+
+    def _confirm_multi_sale(self, sender: str, action: dict) -> str:
+        """Execute a multi-item sale: deduct stock for each, record transaction, generate receipt."""
+        items = action.get("items", [])
+        grand_total = action.get("grand_total", 0)
+
+        # 1. Deduct stock for each item
+        sale_items = []   # items that succeeded
+        reply_lines = ["\u2705 Sale recorded!", ""]
+        failed = []
+
+        for it in items:
+            updated = inventory_repo.deduct_stock(it["item_id"], it["quantity"])
+            if updated is None:
+                failed.append(it["item_name"])
+                continue
+            remaining = updated.get("quantity", 0)
+            sale_items.append(it)
+            reply_lines.append(
+                f"\u2022 *{it['item_name']}* — {it['quantity']} x \u20b9{it['mrp']} = \u20b9{it['amount']}  (remaining: {remaining})"
+            )
+
+        if not sale_items:
+            return "\u274c Could not complete sale \u2014 all items have insufficient stock."
+
+        actual_total = round(sum(it["amount"] for it in sale_items), 2)
+        reply_lines.append(f"\n*Total: \u20b9{actual_total}*")
+
+        if failed:
+            reply_lines.append("\n\u26a0 Skipped (insufficient stock): " + ", ".join(failed))
+
+        # 2. Record transaction
+        txn = transactions_repo.create_transaction({
+            "type": "sale",
+            "sender": sender,
+            "items": [
+                {"name": it["item_name"], "quantity": it["quantity"],
+                 "mrp": it["mrp"], "amount": it["amount"]}
+                for it in sale_items
+            ],
+            "total": actual_total,
+        })
+        txn_id = txn.get("id", "")
+
+        # 3. Generate receipt HTML + upload to blob
+        receipt_url = ""
+        try:
+            html = generate_receipt_html(
+                txn_id=txn_id,
+                items=[
+                    {"name": it["item_name"], "quantity": it["quantity"],
+                     "mrp": it["mrp"], "amount": it["amount"]}
+                    for it in sale_items
+                ],
+                total=actual_total,
+                timestamp=txn.get("created_at", ""),
+            )
+            receipt_url = upload_receipt(html, sender, txn_id)
+        except Exception:
+            logger.exception("Receipt generation failed")
+
+        if receipt_url:
+            reply_lines.append(f"\n\U0001f9fe Receipt: {receipt_url}")
+
+        return "\n".join(reply_lines)
 
     # ------------------------------------------------------------------
     #  Add stock flow
@@ -469,6 +611,8 @@ class InventoryService:
 
         if action_type == "sell":
             return self._confirm_sale(sender, action)
+        if action_type == "multi_sell":
+            return self._confirm_multi_sale(sender, action)
         if action_type == "add":
             return self._confirm_add(sender, action)
         if action_type == "delete":
