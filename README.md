@@ -66,13 +66,13 @@ When a WhatsApp event arrives from Twilio, the **Master Orchestrator** classifie
    │      AZURE FUNCTIONS (MASTER ORCHESTRATOR, EVENT-DRIVEN)         │
    │  1) Detect input type  2) Call reasoning layer  3) Dispatch      │
    └───────────────────────────────┬──────────────────────────────────┘
-                    │
-                    ▼
+                                   │
+                                   ▼
    ┌──────────────────────────────────────────────────────────────────┐
    │        REASONING LAYER (AZURE OPENAI - INTENT DECISION)          │
    │     Interprets message intent and selects the execution agent    │
    └───────────────────────────────┬──────────────────────────────────┘
-                    │
+                                   │
       ┌────────────────────────────┼────────────────────────────┐
       ▼                            ▼                            ▼
 ┌──────────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐
