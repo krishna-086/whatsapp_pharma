@@ -39,6 +39,10 @@ The backend is a serverless **Azure Function** that receives messages via a **Tw
 
 ## 🏗 System Architecture
 
+This system follows an **agentic, event-driven architecture** where **Azure Functions** is the serverless orchestration entry point.
+
+When a WhatsApp event arrives from Twilio, the **Master Orchestrator** classifies the input type (image, voice, text, or confirmation command), invokes an **Azure OpenAI reasoning layer** for intent interpretation, and then activates the appropriate specialized agent.
+
 ```
                            ┌──────────────────────────┐
                            │       PHARMACIST         │
@@ -58,27 +62,45 @@ The backend is a serverless **Azure Function** that receives messages via a **Tw
            { HTTP POST }                                  { HTTPS API }
                 │                                               │
                 ▼                                               ▼
-      ┌──────────────────────────────────────────────────────────────────┐
-      │                   CORE LOGIC & AI PIPELINE                       │
-      │                                                                  │
-      │   Azure Function (Python)  <───>  Azure AI Services              │
-      │   • Router & Services             • Document AI (OCR)            │
-      │   • Inventory Logic               • Speech-to-Text               │
-      │   • Billing Engine                • OpenAI (GPT-4)               │
-      └─────────────────────────────────┬────────────────────────────────┘
-                                        │
-                ┌───────────────────────┴───────────────────────┐
-                ▼                                               ▼
-      ┌──────────────────┐                            ┌──────────────────┐
-      │  AZURE COSMOS DB │                            │   AZURE BLOB     │
-      │     (NoSQL)      │                            │     STORAGE      │
-      ├──────────────────┤                            ├──────────────────┤
-      │ • Inventory      │                            │ • Invoice Images │
-      │ • Transactions   │                            │ • Voice Notes    │
-      │ • Invoices       │                            │ • HTML Receipts  │
-      │ • Sessions       │                            │ • PDF Exports    │
-      └──────────────────┘                            └──────────────────┘
+   ┌──────────────────────────────────────────────────────────────────┐
+   │      AZURE FUNCTIONS (MASTER ORCHESTRATOR, EVENT-DRIVEN)       │
+   │  1) Detect input type  2) Call reasoning layer  3) Dispatch    │
+   └───────────────────────────────┬──────────────────────────────────┘
+                    │
+                    ▼
+   ┌──────────────────────────────────────────────────────────────────┐
+   │        REASONING LAYER (AZURE OPENAI - INTENT DECISION)         │
+   │     Interprets message intent and selects the execution agent    │
+   └───────────────────────────────┬──────────────────────────────────┘
+                    │
+      ┌────────────────────────────┼────────────────────────────┐
+      ▼                            ▼                            ▼
+┌──────────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐
+│ INVOICE PROCESSING   │   │      VOICE AGENT     │   │   INVENTORY AGENT    │
+│ AGENT                │   │                      │   │                      │
+│ • Supplier invoice   │   │ • Speech-to-Text     │   │ • Stock query/update │
+│   OCR (Doc Intel)    │   │ • Billing intent     │   │ • Cosmos DB CRUD     │
+│ • Stock-in ingestion │   │   to stock-out flow  │   │ • Inventory actions  │
+└───────────┬──────────┘   └──────────────────────┘   └───────────┬──────────┘
+      │                                                      │
+      ▼                                                      ▼
+   ┌──────────────────┐                                   ┌──────────────────┐
+   │   AZURE BLOB     │                                   │ AZURE COSMOS DB  │
+   │    STORAGE       │                                   │     (NoSQL)      │
+   │ • Invoice images │                                   │ • Inventory      │
+   │ • Voice notes    │                                   │ • Transactions   │
+   │ • HTML receipts  │                                   │ • Invoices       │
+   └─────────┬────────┘                                   │ • Sessions       │
+       │                                            └─────────┬────────┘
+       ▼                                                      │
+   ┌──────────────────────┐                                      │
+   │    RECEIPT AGENT     │◄─────────────────────────────────────┘
+   │ • Generate receipts  │
+   │ • Store in Blob      │
+   └──────────────────────┘
 ```
+
+This architecture keeps the system modular: the orchestrator centralizes control, Azure OpenAI provides reasoning, and each agent executes a focused domain task.
 
 ---
 
