@@ -63,13 +63,13 @@ When a WhatsApp event arrives from Twilio, the **Master Orchestrator** classifie
                 │                                               │
                 ▼                                               ▼
    ┌──────────────────────────────────────────────────────────────────┐
-   │      AZURE FUNCTIONS (MASTER ORCHESTRATOR, EVENT-DRIVEN)       │
-   │  1) Detect input type  2) Call reasoning layer  3) Dispatch    │
+   │      AZURE FUNCTIONS (MASTER ORCHESTRATOR, EVENT-DRIVEN)         │
+   │  1) Detect input type  2) Call reasoning layer  3) Dispatch      │
    └───────────────────────────────┬──────────────────────────────────┘
                     │
                     ▼
    ┌──────────────────────────────────────────────────────────────────┐
-   │        REASONING LAYER (AZURE OPENAI - INTENT DECISION)         │
+   │        REASONING LAYER (AZURE OPENAI - INTENT DECISION)          │
    │     Interprets message intent and selects the execution agent    │
    └───────────────────────────────┬──────────────────────────────────┘
                     │
@@ -82,8 +82,8 @@ When a WhatsApp event arrives from Twilio, the **Master Orchestrator** classifie
 │   OCR (Doc Intel)    │   │ • Billing intent     │   │ • Cosmos DB CRUD     │
 │ • Stock-in ingestion │   │   to stock-out flow  │   │ • Inventory actions  │
 └───────────┬──────────┘   └──────────────────────┘   └───────────┬──────────┘
-      │                                                      │
-      ▼                                                      ▼
+            │                                                     │
+            ▼                                                     ▼
    ┌──────────────────┐                                   ┌──────────────────┐
    │   AZURE BLOB     │                                   │ AZURE COSMOS DB  │
    │    STORAGE       │                                   │     (NoSQL)      │
@@ -91,10 +91,10 @@ When a WhatsApp event arrives from Twilio, the **Master Orchestrator** classifie
    │ • Voice notes    │                                   │ • Transactions   │
    │ • HTML receipts  │                                   │ • Invoices       │
    └─────────┬────────┘                                   │ • Sessions       │
-       │                                            └─────────┬────────┘
-       ▼                                                      │
-   ┌──────────────────────┐                                      │
-   │    RECEIPT AGENT     │◄─────────────────────────────────────┘
+             │                                            └─────────┬────────┘
+             ▼                                                      │
+   ┌──────────────────────┐                                         │
+   │    RECEIPT AGENT     │◄──────────────────────────   ───────────┘
    │ • Generate receipts  │
    │ • Store in Blob      │
    └──────────────────────┘
