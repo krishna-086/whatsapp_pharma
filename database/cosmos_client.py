@@ -31,3 +31,9 @@ def get_container(name: str):
     """Return a container client by name (lazily initialises the DB)."""
     _init()
     return _database.get_container_client(name)
+
+
+def get_database():
+    """Return the database client (lazily initialises the DB)."""
+    _init()
+    return _database

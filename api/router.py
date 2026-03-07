@@ -26,7 +26,38 @@ _nlp: NLPService | None = None
 _inventory: InventoryService | None = None
 
 # Intents that the InventoryService can handle
-_INVENTORY_INTENTS = {"sell_item", "add_item", "delete_item", "update_item", "query_stock"}
+_INVENTORY_INTENTS = {"sell_item", "add_item", "delete_item", "update_item", "query_stock", "query_expiry", "query_low_stock"}
+
+# Greetings that trigger the welcome message
+_GREETINGS = {"HI", "HELLO", "HEY", "START"}
+
+WELCOME_MESSAGE = (
+    "Welcome to Pharma AI Assistant 💊\n"
+    "\n"
+    "You can manage your pharmacy using WhatsApp.\n"
+    "\n"
+    "Dashboard:\n"
+    "https://tinyurl.com/37au9f2d\n"
+    "\n"
+    "Available Features:\n"
+    "\n"
+    "📄 Supplier Invoice Extraction\n"
+    "Send supplier invoice images to automatically update stock.\n"
+    "\n"
+    "🎤 Billing Through Voice or Text\n"
+    "Example:\n"
+    '"Sell 2 dolo"\n'
+    "or send a voice note.\n"
+    "\n"
+    "📦 Inventory Queries\n"
+    "Examples:\n"
+    "* show stock\n"
+    "* show dolo stock\n"
+    "* medicines expiring soon\n"
+    "* sell 2 dolo\n"
+    "\n"
+    "Just send a message to begin 🚀"
+)
 
 
 def _init_services():
@@ -77,6 +108,11 @@ def route_message(message: dict) -> str:
 
     logger.info("Router: sender=%s  text=%s  media=%d  type=%s",
                 sender, text[:60] if text else "", num_media, media_type)
+
+    # ── 0. Greeting → welcome message ──────────────────────────────
+    if text and text.strip().upper() in _GREETINGS:
+        _reply(sender, WELCOME_MESSAGE)
+        return "OK"
 
     # ── 1. Media messages ────────────────────────────────────────────
     if num_media > 0 and media_url:

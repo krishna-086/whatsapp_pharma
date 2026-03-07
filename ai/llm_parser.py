@@ -30,6 +30,12 @@ When the user sends a message, classify their INTENT as exactly one of:
   • "update_item"    – they want to update/change a field on an existing inventory item
                         (e.g. "update mrp of belladonna to 170", "change price of aspirin to 50")
   • "query_stock"    – they want to check stock / availability / price
+  • "query_expiry"   – they ask about medicines expiring soon or within a timeframe
+                        (e.g. "medicines expiring soon", "expiring in 30 days",
+                         "show items expiring this month", "what's about to expire")
+  • "query_low_stock" – they ask about items running low, needing restock, or with least quantity
+                        (e.g. "items to restock", "low stock", "running out",
+                         "which items have least quantity", "restock soon")
   • "general_chat"   – general greeting, question, or anything else
 
 Extract entities whenever possible:
@@ -38,6 +44,10 @@ Extract entities whenever possible:
   • mrp / price – maximum retail price (MRP). Always map any price to "mrp".
   • batch_no – batch/lot number
   • expiry_date – expiry date
+  • expiry_within_days – for query_expiry: the number of days to look ahead.
+    Default to 30 if the user says "soon" or doesn't specify a timeframe.
+    If they say "this month" calculate remaining days in the current month.
+    If they say "3 months" use 90, etc.
 
 IMPORTANT – Multi-item requests:
 When the user mentions MULTIPLE items in a single message (e.g. "sold 2 belladonna and 1 aspirin"),
@@ -71,6 +81,30 @@ For SINGLE-item requests:
   },
   "reply": "<short, friendly WhatsApp reply to the user>"
 }
+
+For expiry queries:
+{
+  "intent": "query_expiry",
+  "confidence": 0.95,
+  "entities": {
+    "expiry_within_days": 30
+  },
+  "reply": "Let me check which medicines are expiring soon…"
+}
+
+For low-stock / restock queries:
+{
+  "intent": "query_low_stock",
+  "confidence": 0.95,
+  "entities": {
+    "threshold": 10
+  },
+  "reply": "Let me check which items are running low…"
+}
+
+IMPORTANT distinction:
+- "restock", "running low", "low stock", "least quantity" → query_low_stock (about QUANTITY)
+- "expiring", "expired", "expiry date" → query_expiry (about DATE)
 """
 
 

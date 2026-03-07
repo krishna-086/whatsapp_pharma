@@ -94,6 +94,60 @@ def get_low_stock(threshold: int = 10) -> list[dict]:
     return list(_ctr().query_items(query, parameters=params, enable_cross_partition_query=True))
 
 
+def get_expiring_items(within_days: int = 30) -> list[dict]:
+    """
+    Return items whose expiry_date falls within *within_days* from today.
+
+    Expiry dates are stored as strings like ``"03-2026"`` (MM-YYYY) or
+    ``"03/2026"`` or ``"2026-03"``.  We parse them, treat as last day of
+    that month, and compare against today + within_days.
+    """
+    from datetime import timedelta
+    import calendar
+    import re
+
+    cutoff = datetime.now(timezone.utc).date() + timedelta(days=within_days)
+    today = datetime.now(timezone.utc).date()
+    all_items = list_all(limit=500)
+    results = []
+
+    for doc in all_items:
+        raw = (doc.get("expiry_date") or "").strip()
+        if not raw:
+            continue
+        parsed = _parse_expiry(raw)
+        if parsed is None:
+            continue
+        if parsed <= cutoff:
+            doc["_expiry_parsed"] = parsed.isoformat()
+            doc["_expired"] = parsed < today
+            results.append(doc)
+
+    results.sort(key=lambda d: d.get("_expiry_parsed", ""))
+    return results
+
+
+def _parse_expiry(raw: str):
+    """Parse common expiry date formats into a date (last day of month)."""
+    import calendar
+    import re
+
+    raw = raw.strip()
+    # MM-YYYY  or  MM/YYYY
+    m = re.match(r"^(\d{1,2})[\-/](\d{4})$", raw)
+    if m:
+        month, year = int(m.group(1)), int(m.group(2))
+        last_day = calendar.monthrange(year, month)[1]
+        return datetime(year, month, last_day, tzinfo=timezone.utc).date()
+    # YYYY-MM
+    m = re.match(r"^(\d{4})[\-/](\d{1,2})$", raw)
+    if m:
+        year, month = int(m.group(1)), int(m.group(2))
+        last_day = calendar.monthrange(year, month)[1]
+        return datetime(year, month, last_day, tzinfo=timezone.utc).date()
+    return None
+
+
 # ------------------------------------------------------------------
 #  Write helpers
 # ------------------------------------------------------------------

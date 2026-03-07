@@ -102,6 +102,12 @@ class InventoryService:
         if intent == "query_stock":
             return self._query_stock(entities)
 
+        if intent == "query_expiry":
+            return self._query_expiry(entities)
+
+        if intent == "query_low_stock":
+            return self._query_low_stock(entities)
+
         return ""  # not an inventory intent
 
     # ------------------------------------------------------------------
@@ -600,6 +606,46 @@ class InventoryService:
             f"────────────────────\n"
             f"  Stock value: ₹{total_val}"
         )
+
+    # ------------------------------------------------------------------
+    #  Expiry query
+    # ------------------------------------------------------------------
+
+    def _query_expiry(self, entities: dict) -> str:
+        days = int(entities.get("expiry_within_days") or 30)
+        items = inventory_repo.get_expiring_items(within_days=days)
+        if not items:
+            return f"✅ No medicines expiring within the next {days} days."
+
+        lines = [f"⚠️ *Medicines expiring within {days} days:*", "─" * 28]
+        for idx, it in enumerate(items, 1):
+            expired_tag = " 🔴 EXPIRED" if it.get("_expired") else ""
+            lines.append(f"*{idx}. {it['name']}*{expired_tag}")
+            lines.append(f"   Qty: {it.get('quantity', 0)}  |  Expiry: {it.get('expiry_date', 'N/A')}")
+            lines.append(f"   Batch: {it.get('batch_no') or 'N/A'}  |  MRP: ₹{it.get('mrp', 0)}")
+            lines.append("")
+        lines.append(f"Total: {len(items)} item(s)")
+        return "\n".join(lines)
+
+    # ------------------------------------------------------------------
+    #  Low-stock query
+    # ------------------------------------------------------------------
+
+    def _query_low_stock(self, entities: dict) -> str:
+        threshold = int(entities.get("threshold") or 10)
+        items = inventory_repo.get_low_stock(threshold=threshold)
+        if not items:
+            return f"✅ All items have stock above {threshold} units."
+
+        items.sort(key=lambda d: d.get("quantity", 0))
+        lines = [f"📉 *Items with stock below {threshold} units:*", "─" * 28]
+        for idx, it in enumerate(items, 1):
+            lines.append(f"*{idx}. {it['name']}*")
+            lines.append(f"   Qty: {it.get('quantity', 0)}  |  MRP: ₹{it.get('mrp', 0)}")
+            lines.append(f"   Batch: {it.get('batch_no') or 'N/A'}  |  Expiry: {it.get('expiry_date') or 'N/A'}")
+            lines.append("")
+        lines.append(f"Total: {len(items)} item(s) need restocking")
+        return "\n".join(lines)
 
     # ------------------------------------------------------------------
     #  Confirm dispatcher
