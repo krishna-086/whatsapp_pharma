@@ -15,7 +15,7 @@
 
 </p>
 
-An AI-powered WhatsApp chatbot for pharmacy inventory management, built on **Azure Functions** and integrated with **Azure AI services**. Pharmacists can manage stock, process invoices, record sales, and query inventory — all through WhatsApp text, voice notes, or invoice images.
+An AI-powered WhatsApp chatbot for pharmacy inventory management, built on **Azure Functions** and integrated with **Azure AI services**. Pharmacists can manage stock, process invoices, record sales, and query inventory, all through WhatsApp text, voice notes, or invoice images.
 
 ---
 ## 🚀 Quick Demo Access
