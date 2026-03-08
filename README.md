@@ -14,6 +14,48 @@
 </a>
 
 </p>
+---
+
+## 🚀 Live Demo Access
+
+You can try **PharmAgent** using the links below.
+
+### 🌐 Web Dashboard
+View inventory, transactions, and billing through the web interface.
+
+https://proud-sea-298d28480a2f47eba8b3f0b36f4632e3.azurewebsites.net/inventory
+
+---
+
+### 💬 WhatsApp AI Assistant
+
+Start chatting with the PharmAgent WhatsApp bot:
+
+https://wa.me/14155238886?text=join%20be-continued
+
+#### How to Start the Bot
+
+1. Click the WhatsApp link above.
+2. Send the message **`join be-continued`**.
+3. After joining the sandbox, send **`hi`**.
+4. The bot will reply with the **list of features and commands** you can use to interact with the AI assistant.
+
+⚠️ **Important Note for Judges**
+
+The WhatsApp bot is running on the **Twilio WhatsApp Sandbox**, which has a **50 messages per day limit**.  
+Please use the bot **only for quick testing and evaluation** so that all judges can interact with the system.
+
+---
+
+### ⚙️ Azure Function API Endpoint
+
+Backend webhook endpoint used by Twilio:
+
+https://invoiceextractor-d6dxa7ekazdcd5ec.southeastasia-01.azurewebsites.net/api/whatsapp_webhook
+
+This endpoint is the **serverless entry point** that receives WhatsApp messages, processes them using Azure AI services, and returns responses.
+
+---
 An AI-powered WhatsApp chatbot for pharmacy inventory management, built on **Azure Functions** and integrated with **Azure AI services**. Pharmacists can manage stock, process invoices, record sales, and query inventory — all through WhatsApp text, voice notes, or invoice images.
 
 ---
