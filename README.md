@@ -1,4 +1,4 @@
-# 💊 WhatsApp PharmaAgent — AI Pharmacy Assistant
+# 💊 WhatsApp PharmAgent — AI Pharmacy Assistant
 
 An AI-powered WhatsApp chatbot for pharmacy inventory management, built on **Azure Functions** and integrated with **Azure AI services**. Pharmacists can manage stock, process invoices, record sales, and query inventory — all through WhatsApp text, voice notes, or invoice images.
 
@@ -25,7 +25,7 @@ An AI-powered WhatsApp chatbot for pharmacy inventory management, built on **Azu
 
 ## 🧭 Project Overview
 
-**WhatsApp PharmaBot** is a conversational AI system that enables pharmacists to manage their day-to-day inventory operations entirely through WhatsApp. Instead of using desktop software, pharmacists can:
+**WhatsApp PharmAgent** is a conversational AI system that enables pharmacists to manage their day-to-day inventory operations entirely through WhatsApp. Instead of using desktop software, pharmacists can:
 
 - **Ingest supplier purchase invoices** — Send a photo of a distributor invoice and the system automatically extracts medicine names, quantities, batch numbers, expiry dates, and prices using OCR to add incoming stock.
 - **Record sales via voice** — Send a voice note like *"Sold 2 Dolo and 1 Paracetamol"* and the system transcribes it, classifies the intent, deducts stock, and generates an HTML receipt.
@@ -594,7 +594,7 @@ func azure functionapp publish <your-function-app-name>
 
 > **You:** *(send a photo of a supplier purchase invoice from a distributor)*
 >
-> **PharmaBot:**
+> **PharmAgent:**
 > ```
 > Supplier invoice received ✅
 > Vendor: ABC Pharma Distributors
@@ -621,7 +621,7 @@ After `CONFIRM`, the extracted line items are written to the invoices record and
 
 > **You:** *(send a voice note: "Sold 2 Dolo and 1 Paracetamol")*
 >
-> **PharmaBot:**
+> **PharmAgent:**
 > ```
 > 🎙 "Sold 2 Dolo and 1 Paracetamol."
 >
@@ -639,7 +639,7 @@ After `CONFIRM`, the extracted line items are written to the invoices record and
 
 > **You:** *How much Dolo do we have?*
 >
-> **PharmaBot:**
+> **PharmAgent:**
 > ```
 > 📦 Dolo 650
 > ────────────────────
@@ -655,7 +655,7 @@ After `CONFIRM`, the extracted line items are written to the invoices record and
 
 > **You:** *Add 100 Aspirin at ₹12*
 >
-> **PharmaBot:**
+> **PharmAgent:**
 > ```
 > 📦 Confirm add:
 >
