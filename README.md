@@ -18,7 +18,21 @@
 An AI-powered WhatsApp chatbot for pharmacy inventory management, built on **Azure Functions** and integrated with **Azure AI services**. Pharmacists can manage stock, process invoices, record sales, and query inventory — all through WhatsApp text, voice notes, or invoice images.
 
 ---
+## 🚀 Quick Demo Access
 
+| Service | Link |
+|--------|------|
+| 🌐 **Web Dashboard** | https://proud-sea-298d28480a2f47eba8b3f0b36f4632e3.azurewebsites.net/inventory |
+| 💬 **WhatsApp Bot** | https://wa.me/14155238886?text=join%20be-continued |
+| ⚙️ **Azure API Endpoint** | https://invoiceextractor-d6dxa7ekazdcd5ec.southeastasia-01.azurewebsites.net/api/whatsapp_webhook |
+
+**Using the WhatsApp Bot**
+
+1. Click the WhatsApp link above  
+2. Send **`join be-continued`** to activate the Twilio sandbox  
+3. Send **`hi`** to see the list of features and commands  
+
+⚠️ **Note:** Twilio sandbox has a **50 messages/day limit**, so please use the bot briefly for evaluation.
 ## 📖 Table of Contents
 
 - [Project Overview](#-project-overview)
