@@ -1,15 +1,15 @@
 # 💊 WhatsApp PharmAgent — AI Pharmacy Assistant
 <p align="center">
 
-<a href="https://your-dashboard-link">
-<img src="https://img.shields.io/badge/Web%20Dashboard-Live-blue?style=for-the-badge&logo=vercel">
-</a>
-
 <a href="https://wa.me/14155238886?text=join%20be-continued">
 <img src="https://img.shields.io/badge/WhatsApp%20Bot-Open%20Chat-25D366?style=for-the-badge&logo=whatsapp">
 </a>
 
-<a href="https://your-function-app.azurewebsites.net/api/whatsapp_webhook">
+<a href="https://proud-sea-298d28480a2f47eba8b3f0b36f4632e3.azurewebsites.net/inventory">
+<img src="https://img.shields.io/badge/Web%20Dashboard-Live-blue?style=for-the-badge&logo=vercel">
+</a>
+
+<a href="https://invoiceextractor-d6dxa7ekazdcd5ec.southeastasia-01.azurewebsites.net">
 <img src="https://img.shields.io/badge/Azure%20Function-API-blue?style=for-the-badge&logo=microsoftazure">
 </a>
 
