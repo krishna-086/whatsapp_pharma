@@ -20,19 +20,19 @@ An AI-powered WhatsApp chatbot for pharmacy inventory management, built on **Azu
 ---
 ## 🚀 Quick Demo Access
 
-| Service | Link |
-|--------|------|
-| 🌐 **Web Dashboard** | https://proud-sea-298d28480a2f47eba8b3f0b36f4632e3.azurewebsites.net/inventory |
-| 💬 **WhatsApp Bot** | https://wa.me/14155238886?text=join%20be-continued |
-| ⚙️ **Azure API Endpoint** | https://invoiceextractor-d6dxa7ekazdcd5ec.southeastasia-01.azurewebsites.net/api/whatsapp_webhook |
+| Service | Access |
+|--------|--------|
+| 🌐 **Web Dashboard** | [Open Dashboard](https://proud-sea-298d28480a2f47eba8b3f0b36f4632e3.azurewebsites.net/inventory) |
+| 💬 **WhatsApp Bot** | [Start WhatsApp Chat](https://wa.me/14155238886?text=join%20be-continued) |
+| ⚙️ **Azure API Endpoint** | [View API Endpoint](https://invoiceextractor-d6dxa7ekazdcd5ec.southeastasia-01.azurewebsites.net) |
 
 **Using the WhatsApp Bot**
 
-1. Click the WhatsApp link above  
-2. Send **`join be-continued`** to activate the Twilio sandbox  
-3. Send **`hi`** to see the list of features and commands  
+1. Click **Start WhatsApp Chat**
+2. Send **`join be-continued`** to activate the Twilio sandbox
+3. Send **`hi`** to view the list of features and commands
 
-⚠️ **Note:** Twilio sandbox has a **50 messages/day limit**, so please use the bot briefly for evaluation.
+⚠️ **Note:** The Twilio WhatsApp sandbox has a **50 messages/day limit**, so please use the bot briefly during evaluation.
 ## 📖 Table of Contents
 
 - [Project Overview](#-project-overview)
