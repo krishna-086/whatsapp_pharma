@@ -65,6 +65,36 @@ An AI-powered WhatsApp chatbot for pharmacy inventory management, built on **Azu
 The backend is a serverless **Azure Function** that receives messages via a **Twilio WhatsApp webhook**, routes them through the appropriate AI pipeline, and sends responses back through WhatsApp.
 
 ---
+## 👥 Team & Contributions
+
+Built for the **Microsoft AI Unlocked 2026 hackathon** (Top 250 globally).
+
+### Krishna Anand ([@krishna-086](https://github.com/krishna-086))
+- System architecture & tech stack decisions (Azure Functions, Cosmos DB, Twilio, GPT-4.1)
+- Master orchestrator and message routing (`api/router.py`)
+- Cosmos DB schema design (4 containers) and full data layer (`database/`, `storage/`)
+- Twilio WhatsApp integration (`messaging/twilio_service.py`)
+- Natural language query pipeline end-to-end (intent classification, inventory CRUD, confirmation flow)
+- Invoice OCR and voice billing pipelines (co-built with Aditanshu)
+- Azure Functions deployment (co-handled with Aditanshu)
+- Documentation and README
+
+### Aditanshu Sahu ([@aditans](https://github.com/aditans))
+- Azure Document Intelligence integration and pharma-specific field extraction (invoice OCR pipeline, co-built)
+- Azure Speech-to-Text integration (voice billing pipeline, co-built)
+- Azure Functions setup and deployment (co-handled)
+
+### Ansh Jaiswal ([@tfwansh](https://github.com/tfwansh))
+- Next.js web dashboard (`web_dashboard/`) — pages, components, Cosmos DB API routes, PDF generation, responsive design
+- Dashboard deployment to Azure App Service
+
+---
+
+#### Note on Commit History
+
+Some commits appear under different GitHub identities because parts of the backend were committed from shared workstations during the hackathon where Krishna and Aditanshu worked together — git was occasionally configured with default profiles on those machines. The contribution breakdown above reflects actual ownership regardless of commit identity.
+
+---
 
 ## 🏗 System Architecture
 
@@ -526,7 +556,6 @@ Now, any WhatsApp message sent to the sandbox number will be forwarded to your A
 
 ---
 
----
 
 ## 📊 Web Dashboard
 
